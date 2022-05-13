@@ -95,7 +95,7 @@ typedef struct viBuffer
 
 	uint16_t numNodes;    /* amount of nodes           */
 	uint64_t numElements; /* amount of elements        */
-	uint64_t numByte;     /* amount of bytes allocated */
+	uint64_t numBytes;    /* amount of bytes allocated */
 } viBuffer;
 
 /* INIT AND TERMINATE FUNCTIONS */
@@ -109,8 +109,8 @@ VIAPI viHandle viCreateBufferBehavior(char* name, size_t elementSize,
 	uint32_t inital, uint32_t step);
 VIAPI viHandle viCreateBufferBehaviorC(viBufferBehavior* reference);
 VIAPI viHandle viCreateBuffer(viHandle behavior);
-VIAPI void* viGetBufferIndex(viHandle buffer, uint64_t index);
-VIAPI void viBufferAdd(viHandle buffer, void* data);
-VIAPI void viBufferRemove(viHandle buffer, uint64_t index);
+VIAPI void* viBufferGet(viHandle buffer, uint64_t index);
+VIAPI void  viBufferAdd(viHandle buffer, void* data);
+VIAPI void  viBufferRemove(viHandle buffer, uint64_t index);
 
 #endif /* header guard end */

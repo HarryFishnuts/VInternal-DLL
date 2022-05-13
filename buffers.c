@@ -26,6 +26,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS 
 
+#include <math.h>    /* Ceil and Floor    */
 #include <stdio.h>   /* Basic I/O         */
 #include <stdlib.h>  /* Memory Management */
 #include <Windows.h> /* WIN32 Calls       */
@@ -85,17 +86,26 @@ static void vShowError(const char* action, const char* reason)
 
 static void* vAlloc(size_t numBytes)
 {
-	return HeapAlloc(vHeap, FALSE, numBytes);
+	void* checkMem = HeapAlloc(vHeap, FALSE, numBytes);
+	if (checkMem == NULL) vShowError("Memory Allocation",
+		"Could not allocate more memory");
+
+	return checkMem;
 }
 
 static void* vAllocZ(size_t numBytes)
 {
-	return HeapAlloc(vHeap, HEAP_ZERO_MEMORY, numBytes);
+	void* checkMem = HeapAlloc(vHeap, HEAP_ZERO_MEMORY, numBytes);
+	if (checkMem == NULL) vShowError("Zeroed Memory Allocation",
+		"Could not allocate more memory");
+
+	return checkMem;
 }
 
 static void vFree(void* block)
 {
-	HeapFree(vHeap, FALSE, block);
+	int checkValue = HeapFree(vHeap, FALSE, block);
+	if (checkValue) vShowError("Memory Freeing", "Unknown");
 }
 
 static viBuffer* vGetNextBuffer(viHandle* handle)
@@ -123,12 +133,64 @@ static viBuffer* vGetNextBuffer(viHandle* handle)
 
 
 /* ========== INTERNAL BUFFER FUNCTIONS ========== */
-static void vBufferAddNode(viBuffer* target)
+
+
+
+
+
+static viBufferNode* vBufferAddNode(viBuffer* parent)
 {
-	/* get behavior */
-	viBufferBehavior* bhv = vBufferBehaviors + target->behavior;
+	/* get behavior and node order */
+	viBufferBehavior* bhv = vBufferBehaviors + parent->behavior;
+	uint32_t order = parent->numNodes;
 
+	/* alloc all things */
+	viBufferNode* node = vAllocZ(sizeof(viBufferNode));
+	
+	int elemsToAllocate = bhv->sizeStep;
+	if (order == 0) elemsToAllocate = bhv->sizeInitial;
 
+	size_t blockSize = bhv->elementSize * elemsToAllocate;
+	size_t fieldSize = sizeof(viField) * elemsToAllocate / 8;
+
+	node->block = vAlloc(blockSize);
+	node->field = vAlloc(fieldSize);
+
+	/* set node properties */
+	node->order = order;
+	node->bytesAllocated = blockSize;
+	node->fieldAllocated = fieldSize;
+	
+	/* set start and end index based on order */
+	if (order != 0)
+	{
+		node->indexStart = bhv->sizeInitial +
+			(bhv->sizeStep * order) - 1;
+		node->indexEnd = node->indexStart + bhv->sizeStep - 1;
+	}
+	else
+	{
+		node->indexEnd = bhv->sizeInitial - 1;
+	}
+
+	/* modify parent based on order */
+	if (parent->tail == NULL) /* empty condition */
+	{
+		parent->tail = node;
+		parent->head = node;
+	}
+	else
+	{
+		parent->tail->next = node;
+	}
+
+	parent->current = node;
+	parent->numNodes++;
+
+	parent->numBytes    += node->bytesAllocated;
+	parent->numElements += elemsToAllocate;
+
+	return node;
 }
 
 
@@ -220,8 +282,12 @@ VIAPI viHandle viCreateBuffer(viHandle behavior)
 	/* alloc and set parameters */
 	buffer = vAllocZ(sizeof(viBuffer));
 	buffer->behavior = behavior;
+
+	/* add first node and return */
+	vBufferAddNode(buffer);
+	return bufferHandle;
 }
 
-VIAPI void* viGetBufferIndex(viHandle buffer, uint64_t index);
+VIAPI void* viBufferGet(viHandle buffer, uint64_t index);
 VIAPI void viBufferAdd(viHandle buffer, void* data);
 VIAPI void viBufferRemove(viHandle buffer, uint64_t index);
