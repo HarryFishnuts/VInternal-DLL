@@ -40,6 +40,9 @@
 #define VI_BUFFERBEHAVIORS_MAX       0x040
 #define VI_HEAP_PAGEALLOC            0x002
 
+#define VI_EMPTY    0b00
+#define VI_TAKEN    0b01
+
 /* TYPEDEFS */
 typedef uint16_t viHandle;
 typedef uint8_t  viField;
@@ -86,8 +89,9 @@ typedef struct viBuffer
 {
 	viHandle behavior; /* buffer behavior */
 
-	viBufferNode* head; /* head node */
-	viBufferNode* tail; /* tail node */
+	viBufferNode* head;    /* head node */
+	viBufferNode* tail;    /* tail node */
+	viBufferNode* current; /* current node */
 
 	uint16_t numNodes;    /* amount of nodes           */
 	uint64_t numElements; /* amount of elements        */
@@ -101,9 +105,9 @@ VIAPI void __viBufferInit(void);
 VIAPI void __viBufferTerminate(void);
 
 /* BUFFER FUNCTIONS */
-VIAPI viHandle viCreateBufferBehavior(char* name, uint32_t default,
-	uint32_t step);
-VIAPI viHandle viCreateBufferBehaviorC(viBufferBehavior reference);
+VIAPI viHandle viCreateBufferBehavior(char* name, size_t elementSize,
+	uint32_t inital, uint32_t step);
+VIAPI viHandle viCreateBufferBehaviorC(viBufferBehavior* reference);
 VIAPI viHandle viCreateBuffer(viHandle behavior);
 VIAPI void* viGetBufferIndex(viHandle buffer, uint64_t index);
 VIAPI void viBufferAdd(viHandle buffer, void* data);
